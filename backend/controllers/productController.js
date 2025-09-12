@@ -2,15 +2,23 @@ const Product = require('../models/Product');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { category, location, minPrice, maxPrice, approved } = req.query;
+    const { category, location, minPrice, maxPrice, approved, q, condition, sort } = req.query;
     const query = {};
     if (category) query.category = category;
     if (location) query.location = new RegExp(location, 'i');
+    if (condition) query.condition = condition;
+    if (q) query.$or = [
+      { name: new RegExp(q, 'i') },
+      { description: new RegExp(q, 'i') }
+    ];
     if (approved !== undefined) query.approved = approved === 'true';
     if (minPrice || maxPrice) query.price = {};
     if (minPrice) query.price.$gte = Number(minPrice);
     if (maxPrice) query.price.$lte = Number(maxPrice);
-    const products = await Product.find(query).sort({ createdAt: -1 }).populate('seller');
+    let sortBy = { createdAt: -1 };
+    if (sort === 'price-low') sortBy = { price: 1 };
+    if (sort === 'price-high') sortBy = { price: -1 };
+    const products = await Product.find(query).sort(sortBy).populate('seller');
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });

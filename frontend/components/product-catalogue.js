@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import ProductFilters from "@/components/product-filters"
 import ProductGrid from "@/components/product-grid"
 import ProductSearch from "@/components/product-search"
@@ -9,7 +9,7 @@ import { useCart } from "@/hooks/use-cart"
 import CartDrawer from "@/components/cart-drawer"
 import { SlidersHorizontal, Grid3X3, List } from "lucide-react"
 
-export default function ProductCatalogue() {
+export default function ProductCatalogue({ initialCategory = "" }) {
   const [viewMode, setViewMode] = useState("grid")
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart } = useCart()
   const [cartOpen, setCartOpen] = useState(false)
@@ -22,6 +22,13 @@ export default function ProductCatalogue() {
     sortBy: "newest",
     searchQuery: "",
   })
+
+  // initialize from URL-selected category
+  useEffect(() => {
+    if (initialCategory) {
+      setFilters((f)=> ({ ...f, category: initialCategory }))
+    }
+  }, [initialCategory])
 
   return (
     <div className="container mx-auto px-4 py-8">

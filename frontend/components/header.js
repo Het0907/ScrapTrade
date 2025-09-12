@@ -7,6 +7,8 @@ import { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 const SellModal = dynamic(() => import("@/components/sell-modal"), { ssr: false })
 import { getAuthUser, clearAuth } from "@/lib/auth"
+// removed duplicate import
+import { apiGet } from "@/lib/api"
 
 export default function Header() {
   const [sellOpen, setSellOpen] = useState(false)
@@ -45,9 +47,7 @@ export default function Header() {
                 Sell
               </Button>
               <SellModal open={sellOpen} onClose={() => setSellOpen(false)} />
-            <Button asChild variant="ghost" className="text-foreground">
-              <a href="#categories">Categories</a>
-            </Button>
+            <CategoriesMenu />
             <Button variant="ghost" size="icon">
               <ShoppingCart className="h-5 w-5" />
             </Button>
@@ -73,5 +73,36 @@ export default function Header() {
         </div>
       </div>
     </header>
+  )
+}
+
+function CategoriesMenu() {
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState([])
+  useEffect(() => {
+    let mounted = true
+    async function load(){
+      try { const data = await apiGet('/api/categories'); if (mounted) setItems(Array.isArray(data)?data:[]) } catch(_){ setItems([]) }
+    }
+    load();
+    return ()=>{ mounted=false }
+  }, [])
+  return (
+    <div className="relative">
+      <Button variant="ghost" className="text-foreground" onClick={()=>setOpen(o=>!o)}>Categories</Button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-56 bg-popover border rounded-md shadow z-[1000]">
+          <ul className="py-1">
+            {items.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-muted-foreground">No categories</li>
+            ) : items.map((c)=> (
+              <li key={c._id}>
+                <a className="block px-3 py-2 text-sm hover:bg-accent" href={`/products?category=${encodeURIComponent(c.name)}`}>{c.name}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   )
 }

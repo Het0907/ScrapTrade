@@ -68,6 +68,15 @@ export default function ProductGrid({ viewMode, filters, addToCart }) {
         setLoading(true)
         const params = new URLSearchParams()
         if (filters?.location) params.append('location', filters.location)
+        if (filters?.searchQuery) params.append('q', filters.searchQuery)
+        if (filters?.category) params.append('category', filters.category)
+        if (filters?.condition) params.append('condition', filters.condition)
+        if (filters?.sortBy) params.append('sort', filters.sortBy)
+        if (filters?.priceRange && Array.isArray(filters.priceRange)) {
+          const [min, max] = filters.priceRange
+          if (typeof min === 'number') params.append('minPrice', String(min))
+          if (typeof max === 'number') params.append('maxPrice', String(max))
+        }
         // future: map category filter id to backend categories if needed
         const url = `/api/products${params.toString() ? `?${params.toString()}` : ''}`
         const data = await apiGet(url)
@@ -85,7 +94,7 @@ export default function ProductGrid({ viewMode, filters, addToCart }) {
     return () => {
       mounted = false
     }
-  }, [filters?.location])
+  }, [filters?.location, filters?.searchQuery, filters?.category, filters?.condition, filters?.sortBy, filters?.priceRange])
 
   // Refetch when a new product is created via Sell form
   useEffect(() => {
@@ -106,7 +115,7 @@ export default function ProductGrid({ viewMode, filters, addToCart }) {
       window.addEventListener('product:created', onCreated)
       return () => window.removeEventListener('product:created', onCreated)
     }
-  }, [filters?.location])
+  }, [filters?.location, filters?.searchQuery, filters?.category, filters?.condition, filters?.sortBy, filters?.priceRange])
 
   const filteredProducts = useMemo(() => filterAndSortProducts(products, filters), [products, filters])
   const ProductCard = ({ product }) => (

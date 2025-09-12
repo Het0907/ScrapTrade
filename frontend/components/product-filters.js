@@ -6,14 +6,16 @@ import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { X } from "lucide-react"
+import { useEffect, useState } from "react"
+import { apiGet } from "@/lib/api"
 
-const categories = [
-  { id: "electronics", name: "Electronics", count: 245 },
-  { id: "automotive", name: "Automotive", count: 189 },
-  { id: "electrical", name: "Electrical", count: 321 },
-  { id: "machinery", name: "Machinery", count: 98 },
-  { id: "mobile", name: "Mobile Devices", count: 156 },
-  { id: "household", name: "Household", count: 203 },
+const defaultCategories = [
+  { id: "Electronics", name: "Electronics", count: 0 },
+  { id: "Automotive", name: "Automotive", count: 0 },
+  { id: "Electrical", name: "Electrical", count: 0 },
+  { id: "Machinery", name: "Machinery", count: 0 },
+  { id: "Mobile Devices", name: "Mobile Devices", count: 0 },
+  { id: "Household", name: "Household", count: 0 },
 ]
 
 const conditions = [
@@ -30,6 +32,21 @@ const sellers = [
 ]
 
 export default function ProductFilters({ filters, setFilters }) {
+  const [categories, setCategories] = useState(defaultCategories)
+  useEffect(() => {
+    let mounted = true
+    async function load() {
+      try {
+        const data = await apiGet('/api/categories')
+        if (!mounted) return
+        if (Array.isArray(data) && data.length > 0) {
+          setCategories(data.map(c => ({ id: c.name, name: c.name, count: 0 })))
+        }
+      } catch (_) {}
+    }
+    load()
+    return () => { mounted = false }
+  }, [])
   const updateFilter = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
   }
