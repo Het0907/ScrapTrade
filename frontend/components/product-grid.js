@@ -9,19 +9,20 @@ import { apiGet, getApiBaseUrl } from "@/lib/api"
 function mapProductToUI(p) {
   return {
     id: p._id,
-    title: p.name,
+    title: p.name || p.title,
     price: typeof p.price === 'number' ? `₹${p.price.toLocaleString('en-IN')}` : `${p.price ?? ''}`,
     originalPrice: "",
-    condition: "",
+    condition: p.condition || "",
     location: p.location || "",
     seller: (p.seller && (p.seller.name || p.seller)) || "",
     rating: 0,
     reviews: 0,
     image: (() => {
       const url = (p.images && p.images[0]) || p.image || "/placeholder.svg";
-      if (typeof url === 'string' && url.startsWith('/')) {
-        return `${getApiBaseUrl()}${url}`;
-      }
+      if (typeof url !== 'string') return "/placeholder.svg";
+      // If the path is a backend upload URL, prefix API
+      if (url.startsWith('/uploads/')) return `${getApiBaseUrl()}${url}`;
+      // Otherwise leave as-is so Next serves from /public or allow absolute URLs
       return url;
     })(),
     timeLeft: "",
@@ -113,7 +114,11 @@ export default function ProductGrid({ viewMode, filters, addToCart }) {
     }
     if (typeof window !== 'undefined') {
       window.addEventListener('product:created', onCreated)
-      return () => window.removeEventListener('product:created', onCreated)
+      window.addEventListener('order:placed', onCreated)
+      return () => {
+        window.removeEventListener('product:created', onCreated)
+        window.removeEventListener('order:placed', onCreated)
+      }
     }
   }, [filters?.location, filters?.searchQuery, filters?.category, filters?.condition, filters?.sortBy, filters?.priceRange])
 

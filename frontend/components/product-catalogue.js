@@ -11,7 +11,8 @@ import { SlidersHorizontal, Grid3X3, List } from "lucide-react"
 
 export default function ProductCatalogue({ initialCategory = "" }) {
   const [viewMode, setViewMode] = useState("grid")
-  const { cart, addToCart, removeFromCart, updateQuantity, clearCart } = useCart()
+  const { cart, addToCart, removeFromCart, updateQuantity, clearCart, totalItems } = useCart()
+  const [mounted, setMounted] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState({
@@ -29,6 +30,9 @@ export default function ProductCatalogue({ initialCategory = "" }) {
       setFilters((f)=> ({ ...f, category: initialCategory }))
     }
   }, [initialCategory])
+
+  // avoid hydration mismatch for cart count
+  useEffect(() => { setMounted(true) }, [])
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -78,7 +82,7 @@ export default function ProductCatalogue({ initialCategory = "" }) {
         onClick={() => setCartOpen(true)}
       >
         🛒
-        <span className="font-bold">{cart.length}</span>
+        <span className="font-bold">{mounted ? totalItems : 0}</span>
       </button>
       {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
       <div className="grid lg:grid-cols-4 gap-8">

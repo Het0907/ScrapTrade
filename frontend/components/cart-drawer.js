@@ -1,9 +1,35 @@
 import { useCart } from "@/hooks/use-cart"
+import { getApiBaseUrl } from "@/lib/api"
+import { getAuthUser, getToken } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function CartDrawer({ onClose }) {
   const { cart, removeFromCart, clearCart, updateQuantity, totalItems, totalPrice } = useCart()
+  async function handleCheckout() {
+    try {
+      const user = getAuthUser()
+      if (!user) {
+        alert('Please login to checkout')
+        return
+      }
+      const token = getToken()
+      const res = await fetch(`${getApiBaseUrl()}/api/orders/checkout`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!res.ok) throw new Error('Checkout failed')
+      const data = await res.json()
+      alert(`Order placed! Est. delivery: ${new Date(data.estimatedDelivery).toLocaleDateString()}`)
+      await clearCart()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('order:placed'))
+      }
+      onClose?.()
+    } catch (e) {
+      alert(e?.message || 'Checkout failed')
+    }
+  }
 
   return (
     <div className="fixed top-0 right-0 w-full max-w-md h-full bg-white shadow-lg z-50 flex flex-col">
@@ -51,7 +77,7 @@ export default function CartDrawer({ onClose }) {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={clearCart} disabled={cart.length === 0}>Clear Cart</Button>
-          <Button disabled={cart.length === 0}>Checkout</Button>
+          <Button disabled={cart.length === 0} onClick={handleCheckout}>Checkout</Button>
         </div>
       </div>
     </div>
