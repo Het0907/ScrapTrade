@@ -95,8 +95,8 @@ export default function ProductFilters({ filters, setFilters }) {
             className="w-full"
           />
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>₹{filters.priceRange[0].toLocaleString()}</span>
-            <span>₹{filters.priceRange[1].toLocaleString()}</span>
+            <span>₹{filters.priceRange[0].toLocaleString('en-IN')}</span>
+            <span>₹{filters.priceRange[1].toLocaleString('en-IN')}</span>
           </div>
         </CardContent>
       </Card>

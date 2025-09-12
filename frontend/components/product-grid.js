@@ -2,105 +2,34 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Star, MapPin, Clock, ShoppingCart, Heart, Eye } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { apiGet, getApiBaseUrl } from "@/lib/api"
 
-const products = [
-  {
-    id: 1,
-    title: "Copper Wire Bundle - 50kg",
-    price: "₹15,000",
-    originalPrice: "₹18,000",
-    condition: "Good",
-    location: "Mumbai, Maharashtra",
-    seller: "Rajesh Metals",
-    rating: 4.8,
-    reviews: 156,
-    image: "/copper-wire-scrap-bundle.jpg",
-    timeLeft: "2 days left",
-    verified: true,
-    category: "Electronics",
-    description: "High-quality copper wire bundle, perfect for recycling. Clean and sorted.",
-  },
-  {
-    id: 2,
-    title: "Aluminum Sheets - Mixed Grade",
-    price: "₹8,500",
-    originalPrice: "₹10,000",
-    condition: "Excellent",
-    location: "Delhi, NCR",
-    seller: "Metro Scrap Co.",
-    rating: 4.9,
-    reviews: 203,
-    image: "/aluminum-sheets-scrap-metal.jpg",
-    timeLeft: "5 days left",
-    verified: true,
-    category: "Automotive",
-    description: "Premium aluminum sheets from automotive industry. Various thicknesses available.",
-  },
-  {
-    id: 3,
-    title: "Electronic Components Lot",
-    price: "₹12,000",
-    originalPrice: "₹15,000",
-    condition: "Fair",
-    location: "Bangalore, Karnataka",
-    seller: "TechScrap Solutions",
-    rating: 4.7,
-    reviews: 89,
-    image: "/electronic-components-circuit-boards-scrap.jpg",
-    timeLeft: "1 day left",
+// Map backend product to UI product shape
+function mapProductToUI(p) {
+  return {
+    id: p._id,
+    title: p.name,
+    price: typeof p.price === 'number' ? `₹${p.price.toLocaleString('en-IN')}` : `${p.price ?? ''}`,
+    originalPrice: "",
+    condition: "",
+    location: p.location || "",
+    seller: (p.seller && (p.seller.name || p.seller)) || "",
+    rating: 0,
+    reviews: 0,
+    image: (() => {
+      const url = (p.images && p.images[0]) || p.image || "/placeholder.svg";
+      if (typeof url === 'string' && url.startsWith('/')) {
+        return `${getApiBaseUrl()}${url}`;
+      }
+      return url;
+    })(),
+    timeLeft: "",
     verified: false,
-    category: "Electronics",
-    description: "Mixed electronic components including circuit boards, processors, and memory chips.",
-  },
-  {
-    id: 4,
-    title: "Steel Rods & Pipes - 100kg",
-    price: "₹6,800",
-    originalPrice: "₹8,000",
-    condition: "Good",
-    location: "Chennai, Tamil Nadu",
-    seller: "Southern Steel",
-    rating: 4.6,
-    reviews: 124,
-    image: "/steel-rods-pipes-scrap-metal.jpg",
-    timeLeft: "3 days left",
-    verified: true,
-    category: "Machinery",
-    description: "Construction grade steel rods and pipes. Suitable for recycling and reuse.",
-  },
-  {
-    id: 5,
-    title: "Mobile Phone Parts Bulk",
-    price: "₹9,200",
-    originalPrice: "₹11,000",
-    condition: "Fair",
-    location: "Pune, Maharashtra",
-    seller: "Mobile Recyclers",
-    rating: 4.5,
-    reviews: 67,
-    image: "/mobile-phone-parts-scrap.jpg",
-    timeLeft: "4 days left",
-    verified: true,
-    category: "Mobile Devices",
-    description: "Bulk lot of mobile phone parts including screens, batteries, and circuit boards.",
-  },
-  {
-    id: 6,
-    title: "Household Appliance Motors",
-    price: "₹4,500",
-    originalPrice: "₹5,500",
-    condition: "Good",
-    location: "Kolkata, West Bengal",
-    seller: "Appliance Scrap Hub",
-    rating: 4.4,
-    reviews: 92,
-    image: "/appliance-motors-scrap.jpg",
-    timeLeft: "6 days left",
-    verified: false,
-    category: "Household",
-    description: "Various motors from washing machines, refrigerators, and other appliances.",
-  },
-]
+    category: p.category || "",
+    description: p.description || "",
+  }
+}
 
 function filterAndSortProducts(products, filters) {
   let filtered = products.filter((product) => {
@@ -128,7 +57,58 @@ function filterAndSortProducts(products, filters) {
 }
 
 export default function ProductGrid({ viewMode, filters, addToCart }) {
-  const filteredProducts = filterAndSortProducts(products, filters);
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    let mounted = true
+    async function load() {
+      try {
+        setLoading(true)
+        const params = new URLSearchParams()
+        if (filters?.location) params.append('location', filters.location)
+        // future: map category filter id to backend categories if needed
+        const url = `/api/products${params.toString() ? `?${params.toString()}` : ''}`
+        const data = await apiGet(url)
+        if (!mounted) return
+        const mapped = Array.isArray(data) ? data.map(mapProductToUI) : []
+        setProducts(mapped)
+      } catch (e) {
+        if (!mounted) return
+        setError(e?.message || 'Failed to load products')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [filters?.location])
+
+  // Refetch when a new product is created via Sell form
+  useEffect(() => {
+    function onCreated() {
+      // trigger a refetch using current filters
+      (async () => {
+        try {
+          const params = new URLSearchParams()
+          if (filters?.location) params.append('location', filters.location)
+          const url = `/api/products${params.toString() ? `?${params.toString()}` : ''}`
+          const data = await apiGet(url)
+          const mapped = Array.isArray(data) ? data.map(mapProductToUI) : []
+          setProducts(mapped)
+        } catch (_) {}
+      })()
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('product:created', onCreated)
+      return () => window.removeEventListener('product:created', onCreated)
+    }
+  }, [filters?.location])
+
+  const filteredProducts = useMemo(() => filterAndSortProducts(products, filters), [products, filters])
   const ProductCard = ({ product }) => (
     <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden">
       <div className="relative">

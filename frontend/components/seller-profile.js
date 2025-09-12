@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,10 +11,11 @@ import ProductForm from "@/components/product-form"
 import SellerReviews from "@/components/seller-reviews"
 import SellerStats from "@/components/seller-stats"
 import { Star, MapPin, Calendar, Phone, Mail, MessageCircle, Shield, Award, Clock, CheckCircle } from "lucide-react"
+import { apiGet } from "@/lib/api"
 
 // Mock seller data
 export default function SellerProfile({ sellerId }) {
-  const sellerData = {
+  const [sellerData, setSellerData] = useState({
     id: "rajesh-metals",
     name: "Rajesh Metals",
     avatar: "/placeholder.svg?height=120&width=120",
@@ -40,13 +41,37 @@ export default function SellerProfile({ sellerId }) {
       shipping: "Free shipping above ₹5,000",
       payment: "Cash, UPI, Bank Transfer",
     },
-  }
+  })
 
   const [activeTab, setActiveTab] = useState("listings")
   const [products, setProducts] = useState([])
   function handleAddProduct(product) {
     setProducts((prev) => [product, ...prev])
   }
+
+  useEffect(() => {
+    let mounted = true
+    async function load() {
+      try {
+        const [seller, allProducts] = await Promise.all([
+          apiGet(`/api/sellers/${sellerId}`),
+          apiGet(`/api/products`),
+        ])
+        if (!mounted) return
+        setSellerData((prev) => ({ ...prev, ...(seller || {}) }))
+        const sellerIdFromSeller = seller?._id
+        const sellerProducts = (allProducts || []).filter((p) => {
+          const sid = typeof p.seller === 'object' ? p.seller?._id : p.seller
+          return sid && sellerIdFromSeller && String(sid) === String(sellerIdFromSeller)
+        })
+        setProducts(sellerProducts)
+      } catch (e) {
+        // non-fatal: keep mock data
+      }
+    }
+    load()
+    return () => { mounted = false }
+  }, [sellerId])
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -125,8 +150,8 @@ export default function SellerProfile({ sellerId }) {
         <div className="lg:col-span-2">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="listings">Listings ({sellerData.totalListings})</TabsTrigger>
-              <TabsTrigger value="reviews">Reviews ({sellerData.totalReviews})</TabsTrigger>
+              <TabsTrigger value="listings">Listings ({products.length || sellerData.totalListings})</TabsTrigger>
+              <TabsTrigger value="reviews">Reviews ({sellerData.totalReviews || 0})</TabsTrigger>
               <TabsTrigger value="about">About</TabsTrigger>
             </TabsList>
 
@@ -143,10 +168,10 @@ export default function SellerProfile({ sellerId }) {
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>About {sellerData.name}</CardTitle>
+                    <CardTitle>About {sellerData?.name || ''}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-muted-foreground leading-relaxed">{sellerData.description}</p>
+                    <p className="text-muted-foreground leading-relaxed">{sellerData?.description || ''}</p>
                   </CardContent>
                 </Card>
 
@@ -156,7 +181,7 @@ export default function SellerProfile({ sellerId }) {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {sellerData.certifications.map((cert, index) => (
+                      {(sellerData?.certifications || []).map((cert, index) => (
                         <Badge key={index} variant="outline" className="flex items-center gap-1">
                           <CheckCircle className="h-3 w-3" />
                           {cert}
@@ -173,15 +198,15 @@ export default function SellerProfile({ sellerId }) {
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Returns</span>
-                      <span className="text-sm text-muted-foreground">{sellerData.policies.returns}</span>
+                      <span className="text-sm text-muted-foreground">{sellerData?.policies?.returns || ''}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Shipping</span>
-                      <span className="text-sm text-muted-foreground">{sellerData.policies.shipping}</span>
+                      <span className="text-sm text-muted-foreground">{sellerData?.policies?.shipping || ''}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Payment</span>
-                      <span className="text-sm text-muted-foreground">{sellerData.policies.payment}</span>
+                      <span className="text-sm text-muted-foreground">{sellerData?.policies?.payment || ''}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -239,7 +264,7 @@ export default function SellerProfile({ sellerId }) {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {sellerData.categories.map((category, index) => (
+                {(sellerData?.categories || []).map((category, index) => (
                   <Badge key={index} variant="secondary">
                     {category}
                   </Badge>

@@ -3,12 +3,19 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Search, ShoppingCart, User, Menu } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 const SellModal = dynamic(() => import("@/components/sell-modal"), { ssr: false })
+import { getAuthUser, clearAuth } from "@/lib/auth"
 
 export default function Header() {
   const [sellOpen, setSellOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [user, setUser] = useState(null)
+  useEffect(() => {
+    setMounted(true)
+    setUser(getAuthUser())
+  }, [])
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
@@ -38,15 +45,25 @@ export default function Header() {
                 Sell
               </Button>
               <SellModal open={sellOpen} onClose={() => setSellOpen(false)} />
-            <Button variant="ghost" className="text-foreground">
-              Categories
+            <Button asChild variant="ghost" className="text-foreground">
+              <a href="#categories">Categories</a>
             </Button>
             <Button variant="ghost" size="icon">
               <ShoppingCart className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
-            </Button>
+            {mounted && user ? (
+              <div className="flex items-center gap-2">
+                {user.role === 'Admin' && (
+                  <Link href="/admin" className="text-sm underline">Admin</Link>
+                )}
+                <span className="text-sm">Hi, {user.name?.split(' ')[0]}</span>
+                <Button variant="outline" size="sm" onClick={()=>{ clearAuth(); window.location.reload(); }}>Logout</Button>
+              </div>
+            ) : mounted ? (
+              <Link href="/login" className="text-sm underline">Login</Link>
+            ) : (
+              <span className="text-sm opacity-0">placeholder</span>
+            )}
           </nav>
 
           {/* Mobile Menu */}
